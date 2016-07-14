@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.preference.PreferenceManager;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -163,7 +164,16 @@ public class RefreshableView extends LinearLayout implements View.OnTouchListene
 	   hideHeaderHeight = -header.getHeight();
 	   headerLayoutParams = (MarginLayoutParams) header.getLayoutParams();
 	   headerLayoutParams.topMargin = hideHeaderHeight;
+	   /**
+	    * 通过getContext()得知上下文为MainActivity，所以对应的viewGroup就是activity_main
+	    * activity_main包含两个控件，
+	    * 第一个是下拉头RefreshableView，通过header动态加载pull_to_refresh.xml文件，控件的id为pull_to_refresh_head
+	    * 第二个是显示内容的ListView，直接在activity_main.xml文件里可以得到id为list_view
+	    */
 	   listView = (ListView) getChildAt(1);
+	   Log.v("test", String.valueOf(getContext()));
+	   Log.v("test", String.valueOf(getChildAt(0)));
+	   Log.v("test", String.valueOf(getChildAt(1)));
 	   listView.setOnTouchListener(this);
 	   loadOnce = true;
 	  }
