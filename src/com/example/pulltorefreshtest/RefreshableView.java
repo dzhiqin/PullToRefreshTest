@@ -161,19 +161,22 @@ public class RefreshableView extends LinearLayout implements View.OnTouchListene
 	 protected void onLayout(boolean changed, int l, int t, int r, int b) {
 	  super.onLayout(changed, l, t, r, b);
 	  if (changed && !loadOnce) {
-	   hideHeaderHeight = -header.getHeight();
+		  //把高度设置为负数，是为了在屏幕上方隐藏
+	   hideHeaderHeight = -header.getHeight();	  
 	   headerLayoutParams = (MarginLayoutParams) header.getLayoutParams();
+	   //可以看到topMargin也是负数，也就是说”控件到顶部的距离“这个值并不是取绝对值，这也可以理解，因为正负号可以代表方位
 	   headerLayoutParams.topMargin = hideHeaderHeight;
+	  
 	   /**
-	    * 通过getContext()得知上下文为MainActivity，所以对应的viewGroup就是activity_main
+	    * 通过getContext()得知上下文为MainActivity，所以对应的viewGroup就是activity_main确定的布局
 	    * activity_main包含两个控件，
 	    * 第一个是下拉头RefreshableView，通过header动态加载pull_to_refresh.xml文件，控件的id为pull_to_refresh_head
 	    * 第二个是显示内容的ListView，直接在activity_main.xml文件里可以得到id为list_view
 	    */
 	   listView = (ListView) getChildAt(1);
-	   Log.v("test", String.valueOf(getContext()));
-	   Log.v("test", String.valueOf(getChildAt(0)));
-	   Log.v("test", String.valueOf(getChildAt(1)));
+	 //  Log.v("test", String.valueOf(getContext()));
+	 //  Log.v("test", String.valueOf(getChildAt(0)));
+	 //  Log.v("test", String.valueOf(getChildAt(1)));
 	   listView.setOnTouchListener(this);
 	   loadOnce = true;
 	  }
@@ -188,14 +191,23 @@ public class RefreshableView extends LinearLayout implements View.OnTouchListene
 	   switch (event.getAction()) {
 	   case MotionEvent.ACTION_DOWN:
 	    yDown = event.getRawY();
+	   
 	    break;
 	   case MotionEvent.ACTION_MOVE:
 	    float yMove = event.getRawY();
-	    int distance = (int) (yMove - yDown);
-	    // 如果手指是下滑状态，并且下拉头是完全隐藏的，就屏蔽下拉事件
+	    int distance = (int) (yMove - yDown);	    
+	    /**
+	     * 原注释：// 如果手指是下滑状态，并且下拉头是完全隐藏的，就屏蔽下拉事件
+	     * 以上的解释似乎有问题，因为手指下滑的时候，yMove-YDown是正数，distance>0，而且只有在上滑的时候topMargin才会小于hideHeaderHeight
+	     * 更改：这个判定可以去掉，如果return true 则在初始状态下都无法下来，而返回false并没有产生什么作用
+	     * @author Dawn 20160715
+	     */
 	    if (distance <= 0 && headerLayoutParams.topMargin <= hideHeaderHeight) {
+	    	// Log.v("test", "distance<0");
 	     return false;
+	    
 	    }
+	    //去除微小的手指抖动误差
 	    if (distance < touchSlop) {
 	     return false;
 	    }
@@ -206,6 +218,7 @@ public class RefreshableView extends LinearLayout implements View.OnTouchListene
 	      currentStatus = STATUS_PULL_TO_REFRESH;
 	     }
 	     // 通过偏移下拉头的topMargin值，来实现下拉效果
+	     //distance/2，所以实际是2倍的下拉距离才实现了下拉头下拉的实际移动位置，为的是实现使劲拉的效果
 	     headerLayoutParams.topMargin = (distance / 2) + hideHeaderHeight;
 	     header.setLayoutParams(headerLayoutParams);
 	    }
@@ -231,6 +244,7 @@ public class RefreshableView extends LinearLayout implements View.OnTouchListene
 	    listView.setFocusableInTouchMode(false);
 	    lastStatus = currentStatus;
 	    // 当前正处于下拉或释放状态，通过返回true屏蔽掉ListView的滚动事件
+	    //返回true，listView就不会网上滚动内容
 	    return true;
 	   }
 	  }
@@ -375,13 +389,21 @@ public class RefreshableView extends LinearLayout implements View.OnTouchListene
 	  @Override
 	  protected Void doInBackground(Void... params) {
 	   int topMargin = headerLayoutParams.topMargin;
+	   /**
+	    * topMargin连续减SCROLL_SPEED，每次减法都延迟10ms，直到<=0，这中间所用掉的时间就是下拉头刷新的时间
+	    * @author Dawn 20160715
+	    */
 	   while (true) {
-	    topMargin = topMargin + SCROLL_SPEED;
+	   topMargin = topMargin + SCROLL_SPEED;	    
 	    if (topMargin <= 0) {
 	     topMargin = 0;
 	     break;
 	    }
-	    publishProgress(topMargin);
+	    /**
+	     * publishProgress在此处不知道有什么用处,删除 并没有什么影响
+	     * @author Dawn 20160715
+	     */
+	   publishProgress(topMargin);
 	    sleep(10);
 	   }
 	   currentStatus = STATUS_REFRESHING;
