@@ -263,7 +263,7 @@ public class RefreshableView extends LinearLayout implements View.OnTouchListene
 	  mId = id;
 	 }
 	 /**
-	  * 当所有的刷新逻辑完成后，记录调用一下，否则你的ListView将一直处于正在刷新状态。
+	  * 当所有的刷新逻辑完成后，记得调用一下，否则你的ListView将一直处于正在刷新状态。
 	  */
 	 public void finishRefreshing() {
 	  currentStatus = STATUS_REFRESH_FINISHED;
@@ -390,7 +390,8 @@ public class RefreshableView extends LinearLayout implements View.OnTouchListene
 	  protected Void doInBackground(Void... params) {
 	   int topMargin = headerLayoutParams.topMargin;
 	   /**
-	    * topMargin连续减SCROLL_SPEED，每次减法都延迟10ms，直到<=0，这中间所用掉的时间就是下拉头刷新的时间
+	    * topMargin连续减SCROLL_SPEED，每次减法都延迟10ms，直到<=0，这中间所用掉的时间就是下拉头回滚的时间
+	    * 所谓下拉头回滚就是，下拉头从被下拉的位置上滑到topMargin=0的位置这个动作
 	    * @author Dawn 20160715
 	    */
 	   while (true) {
@@ -400,8 +401,9 @@ public class RefreshableView extends LinearLayout implements View.OnTouchListene
 	     break;
 	    }
 	    /**
-	     * publishProgress在此处不知道有什么用处,删除 并没有什么影响
-	     * @author Dawn 20160715
+	     * publishProgress如果删除了就不会有回滚的效果，不管下拉头下拉到什么位置，松手后直接出现在顶部topMargin=0 的位置
+	     * 每次调用了publishProgress()之后，就会调用onProgressUpDate()函数，此函数在UI线程里运行，起到更新界面的效果
+	     * @author Dawn 20160716
 	     */
 	   publishProgress(topMargin);
 	    sleep(10);
@@ -416,13 +418,19 @@ public class RefreshableView extends LinearLayout implements View.OnTouchListene
 	  @Override
 	  protected void onProgressUpdate(Integer... topMargin) {
 	   updateHeaderView();
+	   /**
+	    * onProgressUpdate的参数是Integer...topMargin，
+	    * 个人理解：这是一个不确定个数的Integer[]，每次进来一个数据占用的是topMargin[0]这个位置
+	    * @author-Dawn 20160716
+	    */
 	   headerLayoutParams.topMargin = topMargin[0];
 	   header.setLayoutParams(headerLayoutParams);
 	  }
 	 }
 	 /**
 	  * 隐藏下拉头的任务，当未进行下拉刷新或下拉刷新完成后，此任务将会使下拉头重新隐藏。
-	  *
+	  *较Refreshing Task多了onPostExecute，此函数从doInBackground的return获取参数
+	  *onPostExecute主要用于改变当前的状态currentStatus=STATUS_REFRESH_FINISHED
 	  * @author guolin
 	  */
 	 class HideHeaderTask extends AsyncTask<Void, Integer, Integer> {
@@ -441,12 +449,12 @@ public class RefreshableView extends LinearLayout implements View.OnTouchListene
 	   return topMargin;
 	  }
 	  @Override
-	  protected void onProgressUpdate(Integer... topMargin) {
+	  protected void onProgressUpdate(Integer... topMargin) {//此函数在调用publishProgress函数后执行
 	   headerLayoutParams.topMargin = topMargin[0];
 	   header.setLayoutParams(headerLayoutParams);
 	  }
 	  @Override
-	  protected void onPostExecute(Integer topMargin) {
+	  protected void onPostExecute(Integer topMargin) {//此函数在执行完doInBackground函数后执行，topMargin是从doInBackground来的
 	   headerLayoutParams.topMargin = topMargin;
 	   header.setLayoutParams(headerLayoutParams);
 	   currentStatus = STATUS_REFRESH_FINISHED;
